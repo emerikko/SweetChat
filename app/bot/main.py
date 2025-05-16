@@ -3,6 +3,7 @@ from datetime import datetime
 import asyncio
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 
 from app.core import db_session
 from app.core.config import DB_FILEPATH, BOT_TOKEN
@@ -12,7 +13,7 @@ from app.services.reminder_service import ReminderService
 from app.core.models.users import User
 
 from aiogram import Bot, Dispatcher, types
-from aiogram.filters import Command
+from aiogram.filters import Command, CommandStart
 
 import logging
 
@@ -24,28 +25,31 @@ dp = Dispatcher()
 bot = Bot(token=BOT_TOKEN)
 
 
-async def register_user(user_id: int, username: str, chat_id: int, session: AsyncSession):
-    user = User(tg_id=user_id, username=username, chat_id=chat_id)
+async def check_user_registration(user_id: int, session: AsyncSession):
+    stmt = select(User).where(User.user_id == user_id)
+    result = await session.execute(stmt)
+    return result.scalars().first() is not None
+
+
+async def register_user(user_id: int, username: str, session: AsyncSession):
+    user = User(user_id=user_id, username=username)
     session.add(user)
     await session.commit()
-
-
-async def test():
-    await db_session.global_init(DB_FILEPATH)
-    async with db_session.create_session() as db_sess:
-        reminder_service = ReminderService(db_sess)
-        notification_service = NotificationService(bot)
-        await reminder_service.create_reminder(940091786, "Test", datetime.now(), "Description")
-        await notification_service.start()
 
 
 async def start_polling():
     await dp.start_polling(bot)
 
 
+async def start_notification_service():
+    notification_service = NotificationService(bot)
+    await notification_service.start()
+
+
 async def main():
     tasks = [
-        asyncio.create_task(test()),
+        asyncio.create_task(db_session.global_init(DB_FILEPATH)),
+        asyncio.create_task(start_notification_service()),
         asyncio.create_task(start_polling())
     ]
     await asyncio.gather(*tasks)
@@ -53,16 +57,20 @@ async def main():
 
 @dp.message(Command("start"))
 async def process_start_command(message: types.Message):
-    await db_session.global_init(DB_FILEPATH)
     async with db_session.create_session() as db_sess:
-        await register_user(message.from_user.id, message.from_user.username, message.chat.id, db_sess)
+        await register_user(message.from_user.id, message.from_user.username, db_sess)
     await message.reply("Hi!\nNow you're registered! :3")
     logging.log(logging.INFO, f"{message.from_user.id} {message.text}")
 
 
 @dp.message(Command("new"))
 async def process_new_command(message: types.Message):
-    pass
+    async with db_session.create_session() as db_sess:
+        if not await check_user_registration(message.from_user.id, db_sess):
+            await message.reply("You're not registered yet :(\nUse /start first")
+            return
+        reminder_service = ReminderService(db_sess)
+        await reminder_service.create_reminder(message.from_user.id, "Title", datetime.now(), "Description")
 
 
 if __name__ == '__main__':
