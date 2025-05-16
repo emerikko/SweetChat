@@ -13,7 +13,9 @@ from app.core.models.users import User
 
 CHECK_INTERVAL = 10
 
-logger = logging.getLogger(__name__)
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG
+)
 
 
 class NotificationService:
@@ -47,18 +49,18 @@ class NotificationService:
         return result.scalars().all()
 
     async def _notify_user(self, reminder: Reminder, session: AsyncSession):
-        stmt = select(User).where(User.tg_id == reminder.tg_id)
+        stmt = select(User).where(User.user_id == reminder.user_id)
         user = await session.execute(stmt)
         user = user.scalars().first()
         if user is None:
-            logging.log(logging.WARN, f"User {reminder.tg_id} not found")
+            logging.log(logging.WARN, f"User {reminder.user_id} not found")
             return
         message = f"⏰ Reminder: *{reminder.title}*"
         if reminder.description:
             message += f"{reminder.description}"
 
         await self.bot.send_message(
-            chat_id=user.chat_id,
+            chat_id=user.user_id,
             text=message,
             parse_mode="Markdown"
         )
