@@ -6,7 +6,7 @@ SqlAlchemyBase = declarative_base()
 __factory = None
 
 
-def global_init(db_file: str):
+async def global_init(db_file: str):
     """Initialize async database engine and session factory."""
     global __factory
 
@@ -19,16 +19,15 @@ def global_init(db_file: str):
     conn_str = f'sqlite+aiosqlite:///{db_file.strip()}'
     print(f"Connecting to DB at {conn_str}")
 
-    engine = create_async_engine(conn_str, echo=False)
-    __factory = async_sessionmaker(bind=engine, expire_on_commit=False, class_=AsyncSession)
+    engine = create_async_engine(conn_str, echo=True)
+    __factory = async_sessionmaker(bind=engine, expire_on_commit=False)
 
-    # ⚠️ You cannot call `metadata.create_all()` on an async engine directly
-    # You must use a synchronous engine or run migrations with Alembic.
-    # So skip create_all or use migrations instead.
+    # Proper async table creation
+    async with engine.begin() as conn:
+        await conn.run_sync(SqlAlchemyBase.metadata.create_all)
 
 
 def create_session() -> AsyncSession:
-    global __factory
     if not __factory:
-        raise Exception("DB not initialized. Call global_init() first.")
+        raise Exception("DB not initialized. Call await global_init() first.")
     return __factory()
