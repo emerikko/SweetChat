@@ -9,8 +9,8 @@ class Reminder(SqlAlchemyBase):
 
     id = sqlalchemy.Column(sqlalchemy.Integer,
                            primary_key=True, autoincrement=True)
-    tg_id = sqlalchemy.Column(sqlalchemy.Integer,
-                              sqlalchemy.ForeignKey("users.id"))
+    user_id = sqlalchemy.Column(sqlalchemy.Integer,
+                                sqlalchemy.ForeignKey("users.user_id"))
     user = orm.relationship("User", back_populates="reminders")
     title = sqlalchemy.Column(sqlalchemy.String, nullable=False)
     description = sqlalchemy.Column(sqlalchemy.String)
