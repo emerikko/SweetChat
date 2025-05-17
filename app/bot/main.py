@@ -21,7 +21,7 @@ from aiogram.types import Message
 import logging
 
 logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
 )
 
 new_router = Router()
@@ -66,7 +66,7 @@ async def main():
     await asyncio.gather(*tasks)
 
 
-@dp.message(Command("start"))
+@dp.message(CommandStart())
 async def process_start_command(message: types.Message):
     async with db_session.create_session() as db_sess:
         if await check_user_registration(message.from_user.id, db_sess):
@@ -74,7 +74,6 @@ async def process_start_command(message: types.Message):
             return
         await register_user(message.from_user.id, message.from_user.username, db_sess)
     await message.reply("Hi!\nNow you're registered! :3")
-    logging.log(logging.INFO, f"{message.from_user.id} {message.text}")
 
 
 @dp.message(Command("reminders"))
@@ -106,20 +105,43 @@ async def process_new_command(message: types.Message, state: FSMContext):
     await message.reply("Enter title")
 
 
+@new_router.message(Command("skip"))
+@new_router.message(F.text.casefold() == "skip")
+async def skip_handler(message: Message, state: FSMContext):
+    current_state = await state.get_state()
+    if current_state != NewReminder.new_reminder_description.state:
+        await message.reply("You cannot skip this stage! >:C")
+        await state.set_state(current_state)
+        return
+    data = await state.get_data()
+    title = data["title"]
+    remind_dt = data["remind_dt"]
+    await state.clear()
+    async with db_session.create_session() as db_sess:
+        reminder_service = ReminderService(db_sess)
+        await reminder_service.create_reminder(message.from_user.id, title, remind_dt)
+    await message.reply("Reminder created :3")
+
+
 @new_router.message(NewReminder.new_reminder)
 async def process_new_title(message: Message, state: FSMContext):
     title = message.text
     await state.update_data(title=title)
     await state.set_state(NewReminder.new_reminder_dt)
-    await message.reply("Enter date (YYYY-MM-DD HH:MM:SS)")
+    await message.reply("Enter date (DD.MM.YYYY HH:MM)")
 
 
 @new_router.message(NewReminder.new_reminder_dt)
 async def process_new_reminder_dt(message: Message, state: FSMContext):
-    remind_dt = datetime.strptime(message.text, "%Y-%m-%d %H:%M:%S")
+    try:
+        remind_dt = datetime.strptime(message.text, "%d.%m.%Y %H:%M")
+    except ValueError:
+        await message.reply("Invalid date format :(\nTry again")
+        await state.set_state(NewReminder.new_reminder_dt)
+        return
     await state.update_data(remind_dt=remind_dt)
     await state.set_state(NewReminder.new_reminder_description)
-    await message.reply("Enter description (optional)")
+    await message.reply("Enter description (optional. Use /skip to skip)")
 
 
 @new_router.message(NewReminder.new_reminder_description)
