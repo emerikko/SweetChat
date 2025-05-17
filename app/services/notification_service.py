@@ -57,7 +57,7 @@ class NotificationService:
             return
         message = f"⏰ Reminder: *{reminder.title}*"
         if reminder.description:
-            message += f"{reminder.description}"
+            message += f"\n{reminder.description}"
 
         await self.bot.send_message(
             chat_id=user.user_id,
