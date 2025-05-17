@@ -27,7 +27,7 @@ class NotificationService:
             try:
                 await self.check_and_notify()
             except Exception as e:
-                logger.exception("Error while checking reminders: %s", e)
+                logging.exception("Error while checking reminders: %s", e)
             await asyncio.sleep(CHECK_INTERVAL)
 
     async def check_and_notify(self):
