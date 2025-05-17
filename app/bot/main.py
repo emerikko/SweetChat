@@ -77,13 +77,23 @@ async def process_start_command(message: types.Message):
     logging.log(logging.INFO, f"{message.from_user.id} {message.text}")
 
 
-@dp.message(Command("new"))
-async def process_new_command(message: types.Message):
+@dp.message(Command("reminders"))
+async def process_reminders_command(message: types.Message):
     async with db_session.create_session() as db_sess:
         if not await check_user_registration(message.from_user.id, db_sess):
             await message.reply("You're not registered yet :(\nUse /start first")
             return
         reminder_service = ReminderService(db_sess)
+        reminders = await reminder_service.get_reminders(message.from_user.id)
+        if not reminders:
+            await message.reply("You have no reminders :(")
+            return
+        answer = "Your reminders:\n"
+        for reminder in reminders:
+            answer += (f"Reminder: *{reminder.title}* {reminder.description}\n")
+        await message.reply(f"{answer}", parse_mode="Markdown")
+
+
 @new_router.message(Command("new"))
 @new_router.message(Command("new_reminder"))
 @new_router.message(F.text.casefold() == "new")
