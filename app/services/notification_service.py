@@ -13,10 +13,6 @@ from app.core.models.users import User
 
 CHECK_INTERVAL = 10
 
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG
-)
-
 
 class NotificationService:
     def __init__(self, bot: Bot):

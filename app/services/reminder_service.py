@@ -7,10 +7,6 @@ from app.core.models.reminders import Reminder
 from app.core.models.users import User
 import logging
 
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG
-)
-
 
 class ReminderService:
     def __init__(self, session: AsyncSession):
@@ -53,13 +49,13 @@ class ReminderService:
         if upcoming:
             stmt = select(Reminder).where(
                 Reminder.user_id == user_id,
-                Reminder.datetime >= now
-            ).order_by(Reminder.datetime)
+                Reminder.dt >= now
+            ).order_by(Reminder.dt)
         else:
             stmt = select(Reminder).where(
                 Reminder.user_id == user_id,
-                Reminder.datetime < now
-            ).order_by(Reminder.datetime.desc())
+                Reminder.dt < now
+            ).order_by(Reminder.dt.desc())
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
