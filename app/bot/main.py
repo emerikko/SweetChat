@@ -67,7 +67,7 @@ async def process_reminders_command(message: types.Message):
             answer += (f"Reminder: *{reminder.title}* {reminder.description}\n")
         await message.reply(f"{answer}", parse_mode="Markdown")
 
-# ugh idk just comment for a commit yk
+
 if __name__ == '__main__':
     try:
         asyncio.run(main())
