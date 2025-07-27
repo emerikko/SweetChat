@@ -3,6 +3,7 @@ from google.genai import types
 from datetime import datetime
 import logging
 import func_mod
+from ..core.config import AI_TOKEN
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +123,7 @@ tools = types.Tool(function_declarations=[new_reminder_function])
 # Main loop
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    client = genai.Client(api_key="AIzaSyDWcAdOmCPdDjTeT5j5UZULWOY2GRRRcEA")
+    client = genai.Client(api_key=AI_TOKEN)
     contents: list[types.Content] = []
 
     while True:
